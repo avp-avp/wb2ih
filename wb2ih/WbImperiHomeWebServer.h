@@ -1,6 +1,7 @@
 #pragma once
 #include "../libs/libcomm/WebServer.h"
 #include "../libs/libutils/Config.h"
+#include "../libs/libwb/WBDevice.h"
 #include "mosquittopp.h"
 
 struct Widget
@@ -11,6 +12,10 @@ struct Widget
 	string uid;
 	int max;
 	string_map topics;
+	string_vector controls;
+	CWBDevice *device;
+
+	Widget();
 };
 typedef map <string, Widget> CWidgetsMap;
 
@@ -47,12 +52,19 @@ class CWbImperiHomeWebServer :
 	string_map m_Values;
 	CTemplateMap m_Templates;
 	string_map m_UnknownTemplates;
+	bool m_loadRooms, m_loadWidgets;
+	CWBDeviceMap m_Devices;
+	bool Loaded;
+	string_map m_DefaultTemplates;
 
 public:
 	CWbImperiHomeWebServer(CConfigItem config);
 	~CWbImperiHomeWebServer();
 	void Start();
-	void LoadRooms();
+	void LoadWbConfiguration();
+	CWBDevice* addDeviceFromTopic(const string &topic);
+	CWBDevice* addDevice(const string &topic);
+	void ConfigureWidgets(CWBDevice *device = NULL);
 
 private:
 	virtual void on_connect(int rc);
