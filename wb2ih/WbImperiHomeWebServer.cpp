@@ -10,9 +10,15 @@ Widget::Widget()
 	max = -1;
 }
 
-CWbImperiHomeWebServer::CWbImperiHomeWebServer(CConfigItem config)
-	:m_sName("ImperiHome"), m_MQConnection(NULL), Loaded(false)
+CWbImperiHomeWebServer::CWbImperiHomeWebServer(CConfigItem config, string serverName)
+	:m_sName(config.getStr("mqtt/name", false, "ImperiHome")), m_MQConnection(NULL), Loaded(false)
 {
+#ifdef WIN32
+	m_sName = "ImperiHomeW32";
+#endif
+	if (serverName.length() > 0)
+		m_sName = serverName;
+
 	m_Log = CLog::Default();
 	m_MQTTServer = config.getStr("mqtt/host", true);
 	m_WebPort = config.getInt("web/port", false, 80);
@@ -32,39 +38,45 @@ CWbImperiHomeWebServer::CWbImperiHomeWebServer(CConfigItem config)
 		int slot = 0;
 		for_each_const(CConfigItemList, controls, ctrl)
 		{
-			if ((*ctrl)->isStr())
+			try
 			{
-				TemplateControl control;
-				control.paramName = (*ctrl)->getStr("");
-				control.slot = "slot" + itoa(slot);
-				m_Templates[name].controls.push_back(control);
-			}
-			else if ((*ctrl)->isNode())
-			{
-				TemplateControl control;
-				control.paramName = (*ctrl)->getStr("name");
-				control.slot = (*ctrl)->getStr("slot", false, "slot" + itoa(slot));
-				control.constVal = (*ctrl)->getStr("const", false);
-				CConfigItemList valuesMap;
-				(*ctrl)->getList("values_map", valuesMap);
-				for_each_const(CConfigItemList, valuesMap, valMap)
+				if ((*ctrl)->isStr())
 				{
-					control.values_map[(*valMap)->getStr("wb")] = (*valMap)->getStr("ih");
+					TemplateControl control;
+					control.paramName = (*ctrl)->getStr("");
+					control.slot = "slot" + itoa(slot);
+					m_Templates[name].controls.push_back(control);
 				}
-				control.type= (*ctrl)->getStr("type", false);
-				if (control.type.length() == 0)
+				else if ((*ctrl)->isNode())
 				{
-					if (control.values_map.size() > 0)
-						control.type = "values_map";
-					else if (control.constVal.length()>0)
-						control.type = "const";
-					else
-						control.type = "value";
-				}
+					TemplateControl control;
+					control.paramName = (*ctrl)->getStr("name");
+					control.slot = (*ctrl)->getStr("slot", false, "slot" + itoa(slot));
+					control.constVal = (*ctrl)->getStr("const", false);
+					CConfigItemList valuesMap;
+					(*ctrl)->getList("values_map", valuesMap);
+					for_each_const(CConfigItemList, valuesMap, valMap)
+					{
+						control.values_map[(*valMap)->getStr("wb")] = (*valMap)->getStr("ih");
+					}
+					control.type= (*ctrl)->getStr("type", false);
+					if (control.type.length() == 0)
+					{
+						if (control.values_map.size() > 0)
+							control.type = "values_map";
+						else if (control.constVal.length()>0)
+							control.type = "const";
+						else
+							control.type = "value";
+					}
 
-				m_Templates[name].controls.push_back(control);
+					m_Templates[name].controls.push_back(control);
+				}
+				slot++;
+			} catch (CHaException ex) {
+				m_Log->Printf(0, "Cannot load control for template %s", name.c_str());
+				throw;
 			}
-			slot++;
 		}
 
 		CConfigItemList defaults;
@@ -84,25 +96,31 @@ CWbImperiHomeWebServer::CWbImperiHomeWebServer(CConfigItem config)
 	for_each_const(CConfigItemList, widgets, wgt)
 	{
 		widgetNum++;
-		Widget widget;
-		widget.name = (*wgt)->getStr("name");
-		widget.room = (*wgt)->getStr("room");
-		widget.templ = (*wgt)->getStr("template");
-		widget.uid = (*wgt)->getStr("uid", false, "custom_widget_"+itoa(widgetNum));
-		widget.max = (*wgt)->getInt("max", false, 100);
 
-		CConfigItemList slots;
-		(*wgt)->getList("slots", slots);
-		int slotNum = 0;
-		for_each_const(CConfigItemList, slots, slt)
+		try
 		{
-			string topic = (*slt)->getStr("");
-			widget.topics["slot" + itoa(slotNum)] = topic;
-			widget.device = addDeviceFromTopic(topic);
-			slotNum++;
-		}
-		m_Wigdets[widget.uid] = widget;
+			Widget widget;
+			widget.name = (*wgt)->getStr("name");
+			widget.room = (*wgt)->getStr("room");
+			widget.templ = (*wgt)->getStr("template");
+			widget.uid = (*wgt)->getStr("uid", false, "custom_widget_"+itoa(widgetNum));
+			widget.max = (*wgt)->getInt("max", false, 100);
 
+			CConfigItemList slots;
+			(*wgt)->getList("slots", slots);
+			int slotNum = 0;
+			for_each_const(CConfigItemList, slots, slt)
+			{
+				string topic = (*slt)->getStr("");
+				widget.topics["slot" + itoa(slotNum)] = topic;
+				widget.device = addDeviceFromTopic(topic);
+				slotNum++;
+			}
+			m_Wigdets[widget.uid] = widget;
+		} catch (CHaException ex) {
+				m_Log->Printf(0, "Cannot load widgets number %d", widgetNum);
+				throw;
+		}
 	}
 
 	CConfigItemList rooms;
@@ -111,74 +129,28 @@ CWbImperiHomeWebServer::CWbImperiHomeWebServer(CConfigItem config)
 	for_each_const(CConfigItemList, rooms, room)
 	{
 		roomNum++;
-		string roomId = (*room)->getStr("id", false, "room_n" + itoa(roomNum));
-		string name = (*room)->getStr("name", false, roomId);
-		m_Rooms[roomId] = name;
+		string roomName = "";
+		int wgtNum;
 
-		CConfigItemList widgets;
-		(*room)->getList("widgets", widgets);
-		int wgtNum = 0;
-		for_each_const(CConfigItemList, widgets, wgt)
+		try
 		{
-			wgtNum++;
+			roomName = "";
+			wgtNum = -1;
+			string roomId = (*room)->getStr("id", false, "room_n" + itoa(roomNum));
+			string name = (*room)->getStr("name", false, roomId);
+			roomName = name;
+			m_Rooms[roomId] = name;
 
-			if ((*wgt)->isStr())
+			CConfigItemList widgets;
+			(*room)->getList("widgets", widgets);
+			wgtNum = 0;
+			for_each_const(CConfigItemList, widgets, wgt)
 			{
-				string control = (*wgt)->getStr("");
-				string devName, ctrlName;
-				try
-				{
-					SplitPair(control, '/', devName, ctrlName);
-				}
-				catch (CHaException ex)
-				{
-					m_Log->Printf(0, "Ivalid device '%s'. Skip", control.c_str());
-					continue;
-				}
-				Widget widget;
-				widget.uid = "device_" + itoa(roomNum)+"_"+itoa(wgtNum) + "_" + devName + "_" + ctrlName;
-				widget.device = addDevice(control);
-				widget.room = roomId;
-				widget.controls.push_back(control);
-				m_Wigdets[widget.uid] = widget;
-			}
-			else if ((*wgt)->isNode())
-			{
-				Widget widget;
-				widget.uid = (*wgt)->getStr("id", false);
-				widget.name = (*wgt)->getStr("name", false);
-				widget.templ = (*wgt)->getStr("template", false);
-				widget.max = (*wgt)->getInt("max", false, widget.max);
-				widget.room = roomId;
+				wgtNum++;
 
-				CConfigItemList devices;
-				(*wgt)->getList("devices", devices);
-				if (devices.size() > 0)
+				if ((*wgt)->isStr())
 				{
-					for_each_const(CConfigItemList, devices, control)
-					{
-						string device = (*control)->getStr("");
-						string devName, ctrlName;
-						try
-						{
-							SplitPair(device, '/', devName, ctrlName);
-						}
-						catch (CHaException ex)
-						{
-							m_Log->Printf(0, "Ivalid device '%s'. Skip", device.c_str());
-							continue;
-						}
-
-						if (widget.uid.length()==0)
-							widget.uid = "device_" + itoa(roomNum) + "_" + itoa(wgtNum) + "_" + devName + "_" + ctrlName;
-
-						if (widget.device)
-							widget.device = addDevice(device);
-					}
-				}
-				else
-				{
-					string control = (*wgt)->getStr("device");
+					string control = (*wgt)->getStr("");
 					string devName, ctrlName;
 					try
 					{
@@ -189,18 +161,75 @@ CWbImperiHomeWebServer::CWbImperiHomeWebServer(CConfigItem config)
 						m_Log->Printf(0, "Ivalid device '%s'. Skip", control.c_str());
 						continue;
 					}
-
-					if (widget.uid.length() == 0)
-						widget.uid = "device_" + itoa(roomNum) + "_" + itoa(wgtNum) + "_" + devName + "_" + ctrlName;
-
+					Widget widget;
+					widget.uid = "device_" + itoa(roomNum)+"_"+itoa(wgtNum) + "_" + devName + "_" + ctrlName;
 					widget.device = addDevice(control);
+					widget.room = roomId;
 					widget.controls.push_back(control);
+					m_Wigdets[widget.uid] = widget;
 				}
+				else if ((*wgt)->isNode())
+				{
+					Widget widget;
+					widget.uid = (*wgt)->getStr("id", false);
+					widget.name = (*wgt)->getStr("name", false);
+					widget.templ = (*wgt)->getStr("template", false);
+					widget.max = (*wgt)->getInt("max", false, widget.max);
+					widget.room = roomId;
 
-				m_Wigdets[widget.uid] = widget;
+					CConfigItemList devices;
+					(*wgt)->getList("devices", devices);
+					if (devices.size() > 0)
+					{
+						for_each_const(CConfigItemList, devices, control)
+						{
+							string device = (*control)->getStr("");
+							string devName, ctrlName;
+							try
+							{
+								SplitPair(device, '/', devName, ctrlName);
+							}
+							catch (CHaException ex)
+							{
+								m_Log->Printf(0, "Ivalid device '%s'. Skip", device.c_str());
+								continue;
+							}
+
+							if (widget.uid.length()==0)
+								widget.uid = "device_" + itoa(roomNum) + "_" + itoa(wgtNum) + "_" + devName + "_" + ctrlName;
+
+							if (widget.device)
+								widget.device = addDevice(device);
+						}
+					}
+					else
+					{
+						string control = (*wgt)->getStr("device");
+						string devName, ctrlName;
+						try
+						{
+							SplitPair(control, '/', devName, ctrlName);
+						}
+						catch (CHaException ex)
+						{
+							m_Log->Printf(0, "Ivalid device '%s'. Skip", control.c_str());
+							continue;
+						}
+
+						if (widget.uid.length() == 0)
+							widget.uid = "device_" + itoa(roomNum) + "_" + itoa(wgtNum) + "_" + devName + "_" + ctrlName;
+
+						widget.device = addDevice(control);
+						widget.controls.push_back(control);
+					}
+
+					m_Wigdets[widget.uid] = widget;
+				}
 			}
+		} catch (CHaException ex) {
+				m_Log->Printf(0, "Cannot load widgets. Room %d(%s), widget %d", roomNum, roomName.c_str(), widgetNum);
+				throw;
 		}
-
 	}
 }
 
@@ -223,17 +252,21 @@ void CWbImperiHomeWebServer::Start()
 	connect(m_MQTTServer.c_str());
 
 	Listen(m_WebPort);
+	m_Log->Printf(1, "Server %s started", m_sName.c_str());
 }
 
 void CWbImperiHomeWebServer::LoadWbConfiguration()
 {
+	string_vector v;
 	for_each(CWBDeviceMap, m_Devices, device)
 	{
-		string_vector v;
 		device->second->subscribeToEnrich(v);
+	}
 
-		for_each(string_vector, v, i)
-			subscribe(NULL, i->c_str());
+	for_each(string_vector, v, i)
+	{
+		m_Log->Printf(10, "Subscribe 1 '%s'", i->c_str());
+		subscribe(NULL, i->c_str());
 	}
 
 	Json::Value devices;
@@ -241,6 +274,7 @@ void CWbImperiHomeWebServer::LoadWbConfiguration()
 	{
 		for_each(string_map, i->second.topics, topic)
 		{
+			m_Log->Printf(10, "Subscribe 2 '%s'", topic->second.c_str());
 			subscribe(NULL, topic->second.c_str());
 		}
 	}
@@ -281,6 +315,8 @@ void CWbImperiHomeWebServer::ConfigureWidgets(CWBDevice *device)
 				widget.max = wbControl->Max;
 				string topic = widget.device->getTopic(control);
 				widget.topics["slot" + itoa(widget.topics.size())] = topic;
+				m_Log->Printf(10, "Subscribe 3 '%s'", topic.c_str());
+
 				subscribe(NULL, topic.c_str());
 				//widget.name = wbControl->Name;
 				string type = wbControl->getTypeName(wbControl->Type);
@@ -428,8 +464,19 @@ void CWbImperiHomeWebServer::on_publish(int mid)
 
 void CWbImperiHomeWebServer::on_message(const struct mosquitto_message *message)
 {
-	m_Log->Printf(5, "%s::on_message(%s=%s)", m_sName.c_str(), message->topic, message->payload);
+	size_t payloadLen = message->payloadlen;
+	char payload[512];
+	if (payloadLen >= sizeof(payload))
+		payloadLen = sizeof(payload) - 1;
+	else if (!message->payload)
+		payloadLen = 0;
 
+	if(payloadLen)
+		memcpy(payload, message->payload, payloadLen);
+
+	payload[payloadLen] = 0;
+	m_Log->Printf(5, "%s::on_message(%s=%s)", m_sName.c_str(), message->topic, payload);
+	
 	try
 	{
 		string_vector v;
@@ -442,36 +489,45 @@ void CWbImperiHomeWebServer::on_message(const struct mosquitto_message *message)
 			if (v.size() == 5 && v[2] == "rooms")
 			{
 				if (v[4] == "name")
-					m_Rooms[v[3]] = (char*)message->payload;
+					m_Rooms[v[3]] = payload;
 			}
 			else if (v.size() == 5 && v[2] == "widgets")
 			{
 				if (v[4] == "name")
-					m_Wigdets[v[3]].name = (char*)message->payload;
+					m_Wigdets[v[3]].name = payload;
 				else if (v[4] == "uid")
-					m_Wigdets[v[3]].uid = (char*)message->payload;
+					m_Wigdets[v[3]].uid = payload;
 				else if (v[4] == "template")
-					m_Wigdets[v[3]].templ = (char*)message->payload;
+					m_Wigdets[v[3]].templ = payload;
 				else if (v[4] == "room")
-					m_Wigdets[v[3]].room = (char*)message->payload;
+					m_Wigdets[v[3]].room = payload;
 			}
 			else if (v.size() == 7 && v[2] == "widgets" && v[4] == "controls" && v[6] == "topic")
 			{
-				m_Wigdets[v[3]].topics[v[5]] = (char*)message->payload;
-				m_Topics[(char*)message->payload] = v[3];
-				subscribe(NULL, (string((char*)message->payload) + "/#").c_str());
+				m_Wigdets[v[3]].topics[v[5]] = payload;
+				m_Topics[payload] = v[3];
+				CWBDevice *device = addDeviceFromTopic(payload);
+				m_Wigdets[v[3]].device = device;
+				string_vector v;
+				device->subscribeToEnrich(v);
+				v.push_back(payload);
+				for_each(string_vector, v, i)
+				{
+					m_Log->Printf(10, "Subscribe 4 '%s'", i->c_str());
+					subscribe(NULL, i->c_str());
+				}
 			}
 		}
 		else if (v.size() == 5 && v[1] == "devices" && v[3] == "controls")
 		{
-			m_Values[message->topic] = (char*)message->payload;
+			m_Values[message->topic] = payload;
 		}
 		else if (v.size() == 5 && v[1] == "devices" && v[3] == "meta")
 		{
 			if (m_Devices.find(v[2]) == m_Devices.end())
 				throw CHaException(CHaException::ErrBadParam, "Unknown device '%s'", v[2].c_str());
 
-			m_Devices[v[2]]->enrichDevice(v[4], (char*)message->payload);
+			m_Devices[v[2]]->enrichDevice(v[4], payload);
 		}
 		else if (v.size() == 7 && v[1] == "devices"  && v[3] == "controls" && v[5] == "meta")
 		{
@@ -480,7 +536,7 @@ void CWbImperiHomeWebServer::on_message(const struct mosquitto_message *message)
 				throw CHaException(CHaException::ErrBadParam, "Unknown device '%s'", v[2].c_str());
 			
 			bool isLoaded = i->second->isLoaded();
-			i->second->enrichControl(v[4], v[6], (char*)message->payload);
+			i->second->enrichControl(v[4], v[6], payload);
 
 			if (!isLoaded && i->second->isLoaded())
 				ConfigureWidgets(i->second);
@@ -491,6 +547,10 @@ void CWbImperiHomeWebServer::on_message(const struct mosquitto_message *message)
 	catch (CHaException ex)
 	{
 		m_Log->Printf(0, "on_message(%s) Exception %d, %s", message->topic, ex.GetCode(), ex.GetMsg().c_str());
+	}
+	catch (std::exception ex)
+	{
+		m_Log->Printf(0, "on_message(%s) std::exception %s", message->topic, ex.what());
 	}
 }
 
@@ -538,7 +598,11 @@ void CWbImperiHomeWebServer::OnRequest(CConnection* Conn, string method, string 
 	string_vector v;
 	SplitString(url, '/', v);
 
-	if (v[1] == "system")
+	if (v.size() < 2)
+	{ 
+		replyStr = "Use Imperihome application";
+	}
+	else if (v[1] == "system")
 	{
 		replyJson["id"] = "WirenBoard";
 		replyJson["apiversion"] = "1";
@@ -642,6 +706,18 @@ void CWbImperiHomeWebServer::FillDevices(Json::Value &devices)
 					string val = itoa(0.5 + atof(m_Values[i->second.topics[control->slot]]) / i->second.max * 100);
 					addParam(params, control->paramName, val);
 				}
+				else if (control->type == "rgb")
+				{
+					string_vector v;
+					string val = "";
+					SplitString(m_Values[i->second.topics[control->slot]], ';', v);
+					if (v.size() == 3){
+						char buffer[32];
+						snprintf(buffer, sizeof(buffer), "FF%02X%02X%02X", atoi(v[0]), atoi(v[1]), atoi(v[2]));
+						val = buffer;
+					}
+					addParam(params, control->paramName, val);
+				}
 				else if (control->constVal.length())
 					addParam(params, control->paramName, control->constVal);
 				else if (control->values_map.size())
@@ -695,7 +771,7 @@ void CWbImperiHomeWebServer::callAction(string device, string action, string par
 		{
 			publish(NULL, (widget.topics["slot0"] + "/on").c_str(), param.length(), param.c_str());
 		}
-		else if (tmpl.type == "DevDimmer" || tmpl.type == "DevRGBLight")
+		else if (tmpl.type == "DevDimmer")
 		{
 			string val = atoi(param) ? itoa(widget.max) : "0";
 			publish(NULL, (widget.topics["slot0"] + "/on").c_str(), val.length(), val.c_str());
@@ -704,6 +780,17 @@ void CWbImperiHomeWebServer::callAction(string device, string action, string par
 		{
 			string val = atoi(param) ? itoa(widget.max) : "0";
 			publish(NULL, (widget.topics["slot0"] + "/on").c_str(), val.length(), val.c_str());
+		}
+		else if (tmpl.type == "DevRGBLight")
+		{
+			if (widget.topics.size() > 1) {
+				publish(NULL, (widget.topics["slot1"] + "/on").c_str(), param.length(), param.c_str());
+			}
+			else
+			{
+				string val = atoi(param) ? "255;255;255" : "0;0;0";
+				publish(NULL, (widget.topics["slot0"] + "/on").c_str(), val.length(), val.c_str());
+			}
 		}
 		else
 		{
@@ -718,6 +805,28 @@ void CWbImperiHomeWebServer::callAction(string device, string action, string par
 		if (tmpl.type == "DevDimmer" || tmpl.type == "DevShutter" || tmpl.type == "DevRGBLight")
 		{
 			string val = itoa(0.5+atoi(param) / 100.0 * widget.max);
+			publish(NULL, (widget.topics["slot0"] + "/on").c_str(), val.length(), val.c_str());
+		}
+		else
+		{
+			response["success"] = false;
+			response["errormsg"] = "action setStatus cannot be applied to '" + device + "'";
+			m_Log->Printf(1, "action setStatus cannot be applied to '%s'", device.c_str());
+			return;
+		}
+
+	}
+	else if (action == "setColor")
+	{
+		if (tmpl.type == "DevRGBLight")
+		{
+			int v, r, g, b;
+#ifdef WIN32
+			sscanf_s(param.c_str(), "%02X%02X%02X%02X", &v, &r, &g, &b);
+#else
+			sscanf(param.c_str(), "%02X%02X%02X%02X", &v, &r, &g, &b);
+#endif
+			string val = itoa(r) + ";" + itoa(g) + ";" + itoa(b);
 			publish(NULL, (widget.topics["slot0"] + "/on").c_str(), val.length(), val.c_str());
 		}
 		else

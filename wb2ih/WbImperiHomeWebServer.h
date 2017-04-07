@@ -58,7 +58,7 @@ class CWbImperiHomeWebServer :
 	string_map m_DefaultTemplates;
 
 public:
-	CWbImperiHomeWebServer(CConfigItem config);
+	CWbImperiHomeWebServer(CConfigItem config, string serverName);
 	~CWbImperiHomeWebServer();
 	void Start();
 	void LoadWbConfiguration();
