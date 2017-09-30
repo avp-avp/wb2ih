@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I../include/
+AM_CPPFLAGS = -I../include/ -g
 bin_PROGRAMS = wb2ih
 wb2ih_SOURCES = wb2ih.cpp WbImperiHomeWebServer.cpp
 wb2ih_LDADD =  $(top_builddir)/libs/libcomm/libcomm.la \

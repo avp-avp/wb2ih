@@ -28,6 +28,7 @@ struct TemplateControl
 	string_map values_map;
 };
 typedef vector<TemplateControl> CTemplateControlVector;
+typedef map <long, CConnection*> CConnectionsMap;
 
 struct Template
 {
@@ -40,7 +41,7 @@ class CWbImperiHomeWebServer :
 	public CWebServer, mosqpp::mosquittopp
 {
 	string m_MQTTServer, m_sName;
-	int m_WebPort;
+	int m_WebPort; string m_WebHost;
 	bool m_isMQTTConnected;
 	CLog * m_Log;
 	CConnection *m_MQConnection;
@@ -54,8 +55,12 @@ class CWbImperiHomeWebServer :
 	string_map m_UnknownTemplates;
 	bool m_loadRooms, m_loadWidgets;
 	CWBDeviceMap m_Devices;
-	bool Loaded;
+	bool m_bLoaded, m_bWebServerStarted;
 	string_map m_DefaultTemplates;
+	time_t m_LastOnIdle;
+	int m_InsideLoop;
+	string m_RpcTopic;
+	CConnectionsMap m_Connections;
 
 public:
 	CWbImperiHomeWebServer(CConfigItem config, string serverName);
@@ -83,5 +88,8 @@ private:
 	virtual void OnRequest(CConnection* Conn, string method, string url, string_map &params);
 	void FillDevices(Json::Value &devices);
 	void callAction(string device, string action, string param, Json::Value &response);
+
+	void SendHttpReply(CConnection *con, int code, string body);
+	void SendHttpReplyJson(CConnection *con, int code, const Json::Value& body);
 };
 
