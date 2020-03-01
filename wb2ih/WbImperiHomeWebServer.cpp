@@ -290,6 +290,8 @@ void CWbImperiHomeWebServer::LoadWbConfiguration()
 	if (m_loadWidgets)
 		subscribe(NULL, "/config/widgets/#");
 
+	if (m_bLoaded) ConfigureWidgets();
+
 	subscribe(NULL, (m_RpcTopic+"/reply").c_str());
 
 }
