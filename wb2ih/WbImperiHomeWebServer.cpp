@@ -1028,12 +1028,67 @@ void CWbImperiHomeWebServer::callAction(string device, string action, string par
 			return;
 		}
 	} 
+	else if (action == "setMode")
+	{
+		if (tmpl.type == "DevThermostat" )
+		{
+			for_each_const(CTemplateControlVector, tmpl.controls, control)
+			{
+				if (control->paramName == "curmode")
+				{
+					for_each_const(string_map, control->values_map, value)
+					{
+						if (value->second == param)
+						{
+							publish(NULL, (widget.topics[control->slot] + "/on").c_str(), value->first.length(), value->first.c_str());
+						}
+					}
+
+				}
+			}
+
+		}
+		else
+		{
+			response["success"] = false;
+			response["errormsg"] = "action setMode cannot be applied to '" + device + "'";
+			m_Log->Printf(1, "action setMode cannot be applied to '%s'", device.c_str());
+			return;
+		}
+
+	}
+	else if (action == "setSetPoint")
+	{
+		if (tmpl.type == "DevThermostat")
+		{
+			for_each_const(CTemplateControlVector, tmpl.controls, control)
+			{
+				if (control->paramName == "cursetpoint")
+				{
+					publish(NULL, (widget.topics[control->slot] + "/on").c_str(), param.length(), param.c_str());
+				}
+			}
+		}
+		else
+		{
+			response["success"] = false;
+			response["errormsg"] = "action setSetPoint cannot be applied to '" + device + "'";
+			m_Log->Printf(1, "action setSetPoint cannot be applied to '%s'", device.c_str());
+			return;
+		}
+
+	}
 	else if (action == "setLevel")
 	{
-		if (tmpl.type == "DevDimmer" || tmpl.type == "DevShutter" || tmpl.type == "DevRGBLight")
+		if (tmpl.type == "DevDimmer" || tmpl.type == "DevRGBLight")
 		{
 			string val = itoa(0.5 + atoi(param) / 100.0 * widget.max);
 			publish(NULL, (widget.topics["slot0"] + "/on").c_str(), val.length(), val.c_str());
+		}
+		else if (tmpl.type == "DevShutter")
+		{
+			int val = atoi(param);
+			publish(NULL, (widget.topics[val<50?"slot1":"slot0"] + "/on").c_str(), 1, "1");
 		}
 		else
 		{
