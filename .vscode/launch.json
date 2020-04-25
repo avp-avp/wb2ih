@@ -8,7 +8,7 @@
         "type": "lldb",
         "request": "launch",
         "program": "${workspaceFolder}/wb2ih/wb2ih",
-        "args": ["-c wb2ih.json"]
+        "args": ["-c${workspaceFolder}/wb2ih/wb2ih.json"]
       }
     ]
   }

@@ -469,7 +469,7 @@
   ],
 
   "debug": {
-    "Log": [
+    "logging": [
       {
         "name": "Main",
         "file_name": "/run/wb2ih.log",
