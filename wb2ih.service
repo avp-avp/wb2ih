@@ -1,0 +1,14 @@
+[Unit]
+Description=WB to imperihome server
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/wb2ih -c /etc/wb2ih.conf
+WorkingDirectory=/mnt/data/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
