@@ -1,0 +1,373 @@
+{
+  "general": {
+    "system": "dachia",
+    "load_rooms": true,
+    "load_widgets": true
+  },
+
+  "mqtt": {
+    "host": "192.168.178.21",
+    "name": "dachia"
+  },
+
+  "web": {
+    "port": 8080
+  },
+
+  "rooms2": [
+    {
+      "id": "room_122_in",
+      "name": "Прихожая верх",
+      "widgets_": [
+        {
+          "device": "motion2/motion",
+          "name": "Движение внизу",
+          "template": "motion"
+        }
+      ]
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room1",
+      "name": "Wirenboard",
+      "widgets": [
+        "wb-gpio/A1_OUT",
+        "wb-gpio/A1_IN",
+        "wb-gpio/R1_IN",
+        "wb-gpio/CHARGER_STAT_1",
+        "wb-gpio/BATTERY_PRESENT",
+        "wb-gpio/5V_OUT",
+        "wb-adc/Vin",
+        "wb-adc/R1"
+      ]
+    },
+    {
+      "id": "room12",
+      "name": "Улица",
+      "widgets": [
+        "Climate/Pressure"
+      ]
+    },
+    {
+      "id": "room4",
+      "name": "Спортзал",
+      "widgets": [
+        "Dimmer_d659b4/CH1",
+        "Dimmer_d659b4/CH2",
+        "Dimmer_d659b4/CH3",
+        "Dimmer_d659b4/CH4"
+      ]
+    },
+    {
+      "id": "room10",
+      "name": "Прихожая верх",
+      "widgets_": [
+        {
+          "device": "motion2/motion",
+          "name": "Движение внизу",
+          "template": "motion"
+        }
+      ]
+    },
+    {
+      "id": "room5",
+      "name": "Спальня",
+      "widgets": [
+        {
+          "device": "CO2Sphere/CO2",
+          "name": "CO2",
+          "template": "CO2"
+        }
+      ]
+    }
+  ],
+  "templates": [
+    {
+      "template": "sensor",
+      "type": "DevGenericSensor",
+      "default": [ "value" ]
+    },
+    {
+      "template": "Lux",
+      "type": "DevLuminosity",
+      "default": [ "lux" ]
+    },
+    {
+      "template": "rgb",
+      "type": "DevRGBLight",
+      "controls": [
+        {
+          "name": "color",
+          "type": "rgb"
+        },
+        {
+          "name": "dimmable",
+          "const": "0"
+        },
+        {
+          "name": "whitechannel",
+          "const": "0"
+        }
+      ]
+    },
+    {
+      "template": "rgb_switch",
+      "type": "DevRGBLight",
+      "controls": [
+        {
+          "name": "color",
+          "type": "rgb"
+        },
+        {
+          "name": "Status",
+          "type": "bool"
+        },
+        {
+          "name": "dimmable",
+          "const": "0"
+        },
+        {
+          "name": "whitechannel",
+          "const": "0"
+        }
+      ]
+    },
+    {
+      "template": "CO2",
+      "type": "DevCO2",
+      "default": [ "concentration" ]
+    },
+    {
+      "template": "sound_level",
+      "type": "DevNoise",
+      "default": [ "sound_level" ]
+    },
+    {
+      "template": "atmospheric_pressure",
+      "type": "DevPressure",
+      "default": [ "atmospheric_pressure" ]
+    },
+    {
+      "template": "rel_humidity",
+      "type": "DevHygrometry",
+      "default": [ "rel_humidity" ]
+    },
+    {
+      "template": "temperature",
+      "type": "DevTemperature",
+      "default": [ "temperature" ]
+    },
+    {
+      "template": "voltage",
+      "type": "DevGenericSensor",
+      "default": [ "voltage" ],
+      "controls": [
+        {
+          "name": "unit",
+          "const": "V"
+        },
+        {
+          "name": "Value",
+          "slot": "slot0"
+        }
+      ]
+    },
+    {
+      "template": "resistance",
+      "type": "DevGenericSensor",
+      "default": [ "resistance" ]
+    },
+    {
+      "template": "temp_humidity",
+      "type": "DevTempHygro",
+      "controls": [ "temp", "hygro" ]
+    },
+    {
+      "template": "motion",
+      "type": "DevMotion",
+      "controls": [
+        {
+          "name": "Armable",
+          "const": "0"
+        },
+        {
+          "name": "Ackable",
+          "const": "0"
+        },
+        {
+          "name": "Armed",
+          "const": "1"
+        },
+        {
+          "name": "Tripped",
+          "slot": "slot0"
+        }
+      ]
+    },
+    {
+      "template": "light",
+      "type": "DevSwitch",
+      "controls": [
+        { "name": "Status" }
+      ],
+      "default": [ "switch" ]
+    },
+    {
+      "template": "fan",
+      "type": "DevSwitch",
+      "controls": [
+        { "name": "Status" }
+      ],
+      "default": [ "fan" ]
+    },
+    {
+      "template": "switch",
+      "type": "DevSwitch",
+      "controls": [
+        { "name": "Status" }
+      ]
+    },
+    {
+      "template": "dimmable_light",
+      "type": "DevDimmer",
+      "controls": [
+        {
+          "name": "Status",
+          "type": "bool"
+        },
+        {
+          "name": "Level",
+          "type": "percent",
+          "slot": "slot0"
+        }
+      ]
+    },
+    {
+      "template": "dimmer",
+      "type": "DevDimmer",
+      "controls": [
+        {
+          "name": "Status",
+          "type": "bool"
+        },
+        {
+          "name": "Level",
+          "type": "percent",
+          "slot": "slot0"
+        }
+      ],
+      "default": [ "range" ]
+    },
+    {
+      "template": "shutter",
+      "type": "DevShutter",
+      "controls": [
+        {
+          "name": "stopable",
+          "const": "1"
+        },
+        {
+          "name": "pulseable",
+          "const": "1"
+        },
+        {
+          "name": "Level",
+          "type": "percent",
+          "slot": "slot3"
+        }
+      ],
+      "default": [ "range" ]
+    },
+    {
+      "template": "binary_sensor",
+      "type": "DevDoor"
+    },
+    {
+      "template": "alarm",
+      "type": "DevDoor"
+    },
+    {
+      "template": "heater",
+      "type": "DevThermostat",
+      "controls": [
+        "curtemp",
+        "cursetpoint",
+        {
+          "name": "curmode",
+          "values_map": [
+            {
+              "wb": "0",
+              "ih": "off"
+            },
+            {
+              "wb": "1",
+              "ih": "on"
+            }
+
+          ]
+        },
+        {
+          "name": "availablemodes",
+          "const": "on,off",
+          "slot": ""
+        },
+        {
+          "name": "minVal",
+          "const": "25",
+          "slot": ""
+        },
+        {
+          "name": "maxVal",
+          "const": "32",
+          "slot": ""
+        }
+      ]
+    }
+  ],
+
+  "widgets": [
+    {
+      "name": "Baxi",
+      "template": "heater",
+      "room": "room11",
+      "slots": [
+        "/devices/boiler/controls/temperature",
+        "/devices/boiler/controls/target",
+        "/devices/boiler/controls/on"
+      ]
+    },
+    {
+      "name": "Zota",
+      "template": "heater",
+      "room": "room11",
+      "slots": [
+        "/devices/heater_ctrl1/controls/temperature",
+        "/devices/heater_ctrl1/controls/target",
+        "/devices/heater_ctrl1/controls/on"
+      ]
+    },
+    {
+      "name": "Обогреватель",
+      "template": "heater",
+      "room": "room5",
+      "slots": [
+        "/devices/bedroom/controls/temperature",
+        "/devices/bedroom/controls/target",
+        "/devices/bedroom/controls/on"
+      ]
+    }
+  ],
+
+  "debug": {
+    "logging": [
+      {
+        "name": "Main",
+        "file_name": "/run/wb2ih.log",
+        "console_level": 4,
+        "file_level": 3,
+        "log_time": "yes"
+      }
+    ]
+  }
+}

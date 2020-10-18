@@ -17,6 +17,9 @@ CWbImperiHomeWebServer::CWbImperiHomeWebServer(CConfigItem config, string server
 #ifdef WIN32
 	m_sName = string("ImperiHomeW32");
 #endif
+
+	m_sSystemName = config.getStr("general/system", false, "Wirenboard");
+
 	if (serverName.length() > 0)
 		m_sName = serverName;
 
@@ -707,7 +710,7 @@ void CWbImperiHomeWebServer::OnRequest(CConnection* Conn, string method, string 
 	}
 	else if (v[1] == "system")
 	{
-		replyJson["id"] = "WirenBoard";
+		replyJson["id"] = m_sSystemName;
 		replyJson["apiversion"] = "1";
 		SendHttpReplyJson(Conn, 200, replyJson);
 	}

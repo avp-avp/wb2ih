@@ -40,7 +40,7 @@ typedef map<string, Template> CTemplateMap;
 class CWbImperiHomeWebServer :
 	public CWebServer, mosqpp::mosquittopp
 {
-	string m_MQTTServer, m_sName;
+	string m_MQTTServer, m_sName, m_sSystemName;
 	int m_WebPort; string m_WebHost;
 	bool m_isMQTTConnected;
 	CLog * m_Log;
